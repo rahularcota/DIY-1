@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	"github.com/rahularcota/DIY1/db_util"
+	"github.com/rahularcota/DIY1/models"
 	"os"
 	"testing"
-
-	// tom: for ensureTableExists
-	"log"
 
 	"bytes"
 	"encoding/json"
@@ -19,16 +20,14 @@ import (
 
 )
 
-var a App
+var router *mux.Router
+var db *gorm.DB
 
 func TestMain(m *testing.M) {
-	a = App{}
-	a.Initialize(
-		os.Getenv("TEST_DB_USERNAME"),
-		os.Getenv("TEST_DB_PASSWORD"),
-		os.Getenv("TEST_DB_NAME"))
-
-	ensureTableExists()
+	db_util.InitializeDB()
+	db_util.MigrateDB()
+	router = InitializeRouter()
+	db = db_util.GetDB()
 
 	code := m.Run()
 
@@ -37,68 +36,29 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func ensureTableExists() {
-	if _, err := a.DB.Exec(productsTableCreationQuery); err != nil {
-		log.Fatal(err)
-	}
-
-	if _, err := a.DB.Exec(storeProductTableCreationQuery); err != nil {
-		log.Fatal(err)
-	}
-
-	if _, err := a.DB.Exec(storeTableCreationQuery); err != nil {
-		log.Fatal(err)
-	}
-}
-
 func clearTable() {
-	a.DB.Exec("DELETE FROM products")
-	a.DB.Exec("ALTER SEQUENCE products_id_seq RESTART WITH 1")
-
-	a.DB.Exec("DELETE FROM storeProduct")
-
-	a.DB.Exec("DELETE FROM stores")
-	a.DB.Exec("ALTER SEQUENCE stores_id_seq RESTART WITH 1")
+	db.Unscoped().Delete(&models.Product{})
+	db.Unscoped().Delete(&models.Store{})
+	db.Unscoped().Delete(&models.StoreProduct{})
+	db.Exec("ALTER SEQUENCE products_id_seq RESTART WITH 1")
+	db.Exec("ALTER SEQUENCE stores_id_seq RESTART WITH 1")
 }
 
-const productsTableCreationQuery = `CREATE TABLE IF NOT EXISTS products
-(
-    id SERIAL,
-    name TEXT NOT NULL,
-    price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-    CONSTRAINT products_pkey PRIMARY KEY (id)
-)`
-const storeProductTableCreationQuery = `CREATE TABLE IF NOT EXISTS storeProduct
-(
-	store_id NUMERIC,
-	product_id NUMERIC,
-	is_available BOOLEAN
-)`
-const storeTableCreationQuery = `CREATE TABLE IF NOT EXISTS stores
-(
-	id SERIAL,
-	name TEXT NOT NULL,
-	CONSTRAINT stores_pkey PRIMARY KEY (id)
-)`
 
-
-// tom: next functions added later, these require more modules: net/http net/http/httptest
 func TestEmptyTable(t *testing.T) {
+	//fmt.Println("before")
 	clearTable()
+	//fmt.Println("After")
 
-	req, _ := http.NewRequest("GET", "/products", nil)
+	req, _ := http.NewRequest("GET", "/product/1", nil)
 	response := executeRequest(req)
 
-	checkResponseCode(t, http.StatusOK, response.Code)
-
-	if body := response.Body.String(); body != "[]" {
-		t.Errorf("Expected an empty array. Got %s", body)
-	}
+	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
 
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
-	a.Router.ServeHTTP(rr, req)
+	router.ServeHTTP(rr, req)
 
 	return rr
 }
@@ -122,7 +82,8 @@ func addProducts(count int) {
 	}
 
 	for i := 0; i < count; i++ {
-		a.DB.Exec("INSERT INTO products(name, price) VALUES($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
+		//db.Exec("INSERT INTO products(name, price) VALUES($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
+		db.Create(&models.Product{Name: strconv.Itoa(i), Price: float64(10.0 * i)})
 	}
 }
 
@@ -132,7 +93,8 @@ func addStores(count int) {
 	}
 
 	for i := 0; i < count; i++ {
-		a.DB.Exec("INSERT INTO stores(name) VALUES($1)", "Store "+strconv.Itoa(i))
+		//db.Exec("INSERT INTO stores(name) VALUES($1)", "Store "+strconv.Itoa(i))
+		db.Create(&models.Store{Name: strconv.Itoa(i)})
 	}
 }
 
@@ -142,8 +104,9 @@ func addStoreProducts(storeId int, productsCount int) {
 	}
 
 	for i := 0; i < productsCount; i++ {
-		a.DB.Exec("INSERT INTO products(name, price) VALUES($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
-		a.DB.Exec("INSERT INTO storeProduct(store_id, product_id, is_available) VALUES ($1, $2, true)", storeId, i+1)
+		db.Create(&models.Product{Name: strconv.Itoa(i), Price: float64(10.0 * i)})
+		db.Create(&models.StoreProduct{StoreId: storeId, ProductId: i+1, IsAvailable: true})
+		//db.Exec("INSERT INTO storeProduct(store_id, product_id, is_available) VALUES ($1, $2, true)", storeId, i+1)
 	}
 }
 
@@ -162,6 +125,8 @@ func TestCreateProduct(t *testing.T) {
 	var m map[string]interface{}
 	json.Unmarshal(response.Body.Bytes(), &m)
 
+	fmt.Println(m)
+
 	if m["name"] != "test product" {
 		t.Errorf("Expected product name to be 'test product'. Got '%v'", m["name"])
 	}
@@ -172,7 +137,7 @@ func TestCreateProduct(t *testing.T) {
 
 	// the id is compared to 1.0 because JSON unmarshaling converts numbers to
 	// floats, when the target is a map[string]interface{}
-	if m["id"] != 1.0 {
+	if m["ID"] != 1.0 {
 		t.Errorf("Expected product ID to be '1'. Got '%v'", m["id"])
 	}
 }
@@ -274,7 +239,7 @@ func TestCreateStore(t *testing.T) {
 		t.Errorf("Expected store name to be 'test store'. Got '%v'", m["name"])
 	}
 
-	if m["id"] != 1.0 {
+	if m["ID"] != 1.0 {
 		t.Errorf("Expected store ID to be '1'. Got '%v'", m["id"])
 	}
 }
@@ -282,15 +247,17 @@ func TestCreateStore(t *testing.T) {
 func TestCheckStoreExistence(t *testing.T) {
 	clearTable()
 	addStores(1)
-	s := store{ID: 1}
-	exists, _ := s.checkStoreExistence(a.DB)
+	s := models.Store{}
+	s.ID = 1
+	exists, _ := s.CheckStoreExistence(db)
 	assertEqual(t, true, exists)
 }
 
 func TestCheckStoreNonExistence(t *testing.T) {
 	clearTable()
-	s := store{ID: 1}
-	exists, _ := s.checkStoreExistence(a.DB)
+	s := models.Store{}
+	s.ID = 1
+	exists, _ := s.CheckStoreExistence(db)
 	assertEqual(t, false, exists)
 }
 
@@ -328,7 +295,7 @@ func TestAddStoreProducts(t *testing.T) {
 	resp := executeRequest(req)
 	checkResponseCode(t, http.StatusCreated, resp.Code)
 
-	products := make([]product,0)
+	products := make([]models.Product,0)
 	json.Unmarshal(resp.Body.Bytes(), &products)
 
 	if len(products)!=1 {
