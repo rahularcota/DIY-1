@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/rahularcota/DIY1/dal/models"
+	"github.com/rahularcota/DIY1/dal/repos"
 	"github.com/rahularcota/DIY1/db_util"
-	"github.com/rahularcota/DIY1/models"
 	"net/http"
 	"strconv"
 )
@@ -17,11 +18,13 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
 		return
 	}
+	repo := repos.GetProductRepo()
 
-	p := models.Product{}
-	p.ID = uint(id)
+	//p := models.Product{}
+	//p.ID = uint(id)
 
-	if err := p.GetProduct(db_util.GetDB()); err != nil {
+	p, err := repo.GetProduct(db_util.GetDB(), id)
+	if err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
 			respondWithError(w, http.StatusNotFound, "Product not found")
@@ -43,7 +46,9 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if err := p.CreateProduct(db_util.GetDB()); err != nil {
+	repo := repos.ProductRepo{}
+	err := repo.CreateProduct(db_util.GetDB(), &p)
+	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -66,9 +71,11 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+
+	repo := repos.GetProductRepo()
 	p.ID = uint(id)
 
-	if err := p.UpdateProduct(db_util.GetDB()); err != nil {
+	if err := repo.UpdateProduct(db_util.GetDB(), &p); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -84,9 +91,8 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := models.Product{}
-	p.ID = uint(id)
-	if err := p.DeleteProduct(db_util.GetDB()); err != nil {
+	repo := repos.GetProductRepo()
+	if err := repo.DeleteProduct(db_util.GetDB(), id); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

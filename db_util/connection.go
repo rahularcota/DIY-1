@@ -3,7 +3,7 @@ package db_util
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"github.com/rahularcota/DIY1/models"
+	"github.com/rahularcota/DIY1/dal/models"
 	"os"
 )
 

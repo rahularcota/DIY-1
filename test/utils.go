@@ -3,7 +3,7 @@ package test
 import (
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	"github.com/rahularcota/DIY1/models"
+	"github.com/rahularcota/DIY1/dal/models"
 	"net/http"
 	"net/http/httptest"
 	"strconv"

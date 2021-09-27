@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/rahularcota/DIY1/dal/repos"
 	"github.com/rahularcota/DIY1/db_util"
-	"github.com/rahularcota/DIY1/models"
 	"github.com/rahularcota/DIY1/router"
 	"github.com/stretchr/testify/suite"
 	"net/http"
@@ -26,6 +26,9 @@ func TestStoreTestSuite(t *testing.T) {
 func (suite *StoreTestSuite) SetupSuite() {
 	db_util.InitializeDB()
 	db_util.MigrateDB()
+	repos.InitProductRepo()
+	repos.InitStoreRepo()
+	repos.InitStoreProductRepo()
 	suite.rtr = router.InitializeRouter()
 	suite.db = db_util.GetDB()
 }
@@ -51,15 +54,22 @@ func (suite *StoreTestSuite) TestCreateStore() {
 
 func (suite *StoreTestSuite) TestGetStore() {
 	addStores(1, suite.db)
-	s := models.Store{}
-	s.ID = 1
-	exists, _ := s.GetStore(suite.db)
+	repo := repos.GetStoreRepo()
+	exists, _ := repo.GetStore(suite.db, 1)
 	suite.Equal(true, exists)
 }
 
 func (suite *StoreTestSuite) TestGetNonExistentStore() {
-	s := models.Store{}
-	s.ID = 1
-	exists, _ := s.GetStore(suite.db)
+	repo := repos.GetStoreRepo()
+	exists, _ := repo.GetStore(suite.db, 1)
 	suite.Equal(false, exists)
+}
+
+func (suite *StoreTestSuite) TestCreateStoreInvalidPayload() {
+	var jsonStr = []byte(`[]`)
+	req, _ := http.NewRequest("POST", "/store", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	response := executeRequest(req, suite.rtr)
+	suite.Equal(http.StatusBadRequest, response.Code)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/rahularcota/DIY1/dal/repos"
 	"github.com/rahularcota/DIY1/db_util"
 	"github.com/rahularcota/DIY1/router"
 	"github.com/stretchr/testify/suite"
@@ -25,6 +26,9 @@ func TestProductTestSuite(t *testing.T) {
 func (suite *ProductTestSuite) SetupSuite() {
 	db_util.InitializeDB()
 	db_util.MigrateDB()
+	repos.InitProductRepo()
+	repos.InitStoreRepo()
+	repos.InitStoreProductRepo()
 	suite.rtr = router.InitializeRouter()
 	suite.db = db_util.GetDB()
 }

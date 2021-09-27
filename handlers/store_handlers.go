@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/rahularcota/DIY1/dal/models"
+	"github.com/rahularcota/DIY1/dal/repos"
 	"github.com/rahularcota/DIY1/db_util"
-	"github.com/rahularcota/DIY1/models"
 	"net/http"
 )
 
@@ -16,7 +17,8 @@ func CreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if err := s.CreateStore(db_util.GetDB()); err != nil {
+	repo := repos.GetStoreRepo()
+	if err := repo.CreateStore(db_util.GetDB(), &s); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
