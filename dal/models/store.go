@@ -9,19 +9,3 @@ type Store struct {
 	gorm.Model
 	Name string `json:"name"`
 }
-//
-//func(s *Store) CreateStore(db *gorm.DB) error {
-//	txn := db.Create(&s)
-//
-//	return txn.Error
-//}
-//
-//func(s *Store) GetStore(db *gorm.DB) (bool, error){
-//
-//	txn := db.First(&s)
-//	if txn.Error != nil {
-//		return false, txn.Error
-//	}
-//
-//	return true, nil
-//}
