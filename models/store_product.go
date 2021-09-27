@@ -13,25 +13,6 @@ type StoreProduct struct {
 }
 
 func (sp *StoreProduct) GetStoreProducts(db *gorm.DB) ([]Product, error) {
-	//rows, err := db.Query(
-	//	"SELECT products.id, products.name, products.price FROM products inner join storeProduct on products.id = storeProduct.product_id WHERE storeProduct.store_id = $1 AND storeProduct.is_available = true", sp.StoreId)
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//defer rows.Close()
-	//
-	//products := []Product{}
-	//
-	//for rows.Next() {
-	//	var p Product
-	//	if err := rows.Scan(&p.ID, &p.Name, &p.Price); err != nil {
-	//		return nil, err
-	//	}
-	//	products = append(products, p)
-	//}
-
 	var products []Product
 	txn := db.Raw("SELECT products.id, products.name, products.price FROM products inner join store_products on products.id = store_products.product_id WHERE store_products.store_id = ? AND store_products.is_available = true", sp.StoreId).Scan(&products)
 

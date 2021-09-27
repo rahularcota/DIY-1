@@ -19,7 +19,7 @@ func GetStoreProducts(w http.ResponseWriter, r *http.Request) {
 
 	s := models.Store{}
 	s.ID = uint(id)
-	exists, err:= s.CheckStoreExistence(db_util.GetDB())
+	exists, err:= s.GetStore(db_util.GetDB())
 	if err != nil  && !exists{
 		respondWithError(w, http.StatusNotFound, "Store does not exist")
 		return
@@ -45,7 +45,7 @@ func AddStoreProducts(w http.ResponseWriter, r *http.Request) {
 
 	s := models.Store{}
 	s.ID = uint(id)
-	exists, err:= s.CheckStoreExistence(db_util.GetDB())
+	exists, err:= s.GetStore(db_util.GetDB())
 	if err != nil  && !exists{
 		respondWithError(w, http.StatusNotFound, "Store does not exist")
 		return

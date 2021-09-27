@@ -16,8 +16,7 @@ func(s *Store) CreateStore(db *gorm.DB) error {
 	return txn.Error
 }
 
-func(s *Store) CheckStoreExistence(db *gorm.DB) (bool, error){
-	//rows, err := db.Query("SELECT * FROM stores WHERE id = $1", s.ID)
+func(s *Store) GetStore(db *gorm.DB) (bool, error){
 
 	txn := db.First(&s)
 	if txn.Error != nil {
